@@ -5,7 +5,6 @@
 			<meta name="viewport" content="width=device-width, initial-scale=1.0">
 				<title>Vermogen Meter</title>
 				<style>
-					
 					/* General Gauge Styles */
 					.gauge {
 						--size: 250px;
@@ -16,9 +15,6 @@
 						border-radius: 50%;
 						outline: 1.5px solid gray;
 						box-shadow: inset 0 0 0 1.5px gray;
-						background:
-						radial-gradient(var(--background) 0 var(--cutout), transparent var(--cutout) 100%),
-						conic-gradient(from -135deg, transparent 0deg, green 0deg 180deg, transparent 180deg 270deg, transparent 270deg);
 						display: flex;
 						justify-content: center;
 						align-items: center;
@@ -26,13 +22,25 @@
 					}
 					
 					/* Primary Indicator */
+					.primary_indicator,
+					.secondary_indicator {
+						position: absolute;
+						bottom: 0;
+						left: 50%;
+						transform: translateX(-50%);
+						text-align: center;
+					}
+					
 					.primary_indicator {
+						position: absolute;
+						top: 50%;
+						left: 50%;
+						transform: translate(-50%, -50%);
 						font-size: 2rem;
 						font-weight: bold;
 						color: rgb(100, 200, 100); /* Initial color */
 						transition: color 0.2s linear;
-						position: absolute;
-						top: 30%;
+						text-align: center;
 					}
 					
 					.primary_indicator .label {
@@ -41,27 +49,27 @@
 						color: #666; /* Dimmed */
 					}
 					
-					.primary_indicator .value {
+					.primary_indicator .value,
+					.secondary_indicator .value {
+						display: inline-block;
 						font-size: 2rem;
 						font-weight: bold;
 						color: #333;
-						margin-bottom: 5px;
 						transition: color 0.2s linear;
-						display: flex; /* Enable flexbox */
-						align-items: center; /* Vertically center the value and unit */
 					}
 					
-					.primary_indicator .unit {
-						font-size: 1rem;
-						color: #888;
-						margin-left: 5px; /* Add some spacing between the value and unit */
-						white-space: nowrap; /* Prevent the unit from wrapping to a new line */
+					.primary_indicator .unit,
+					.secondary_indicator .unit {
+						display: inline-block;
+						margin-left: 2px; /* Small spacing between value and unit */
 					}
 					
 					/* Secondary Indicator */
 					.secondary_indicator {
 						position: absolute;
-						bottom: 10%;
+						bottom: 0; /* Set to position at the very bottom */
+						left: 50%;
+						transform: translateX(-50%);
 						text-align: center;
 					}
 					
@@ -77,17 +85,14 @@
 						color: #333;
 						margin-bottom: 5px;
 						transition: color 0.2s linear;
-						display: flex; /* Enable flexbox */
-						align-items: center; /* Vertically center the value and unit */
+						display: inline-flex; /* Keep the unit inline with the value */
+						align-items: baseline; /* Align baseline for a natural look */
 					}
 					
 					.secondary_indicator .unit {
-						font-size: 1rem;
-						color: #888;
-						margin-left: 5px; /* Add some spacing between the value and unit */
-						white-space: nowrap; /* Prevent the unit from wrapping to a new line */
+						display: inline;
+						margin-left: 2px; /* Small spacing between value and unit */
 					}
-					
 				</style>
 			</head>
 	<body>
@@ -95,97 +100,191 @@
 		<div class="gauge">
 			<div class="primary_indicator">
 				<div class="label"></div>
-				<div class="value">0.0</div><span class="unit"></span>
+				<div class="value-container">
+					<span class="value">0.0</span><span class="unit"></span>
+				</div>
 			</div>
 			<div class="secondary_indicator">
 				<div class="label"></div>
-				<div class="value">0.0</div><span class="unit"></span>
+				<div class="value-container">
+					<span class="value">0.0</span><span class="unit"></span>
+				</div>
 			</div>
 		</div>
 		
-		
 		<script>
-			
 			let baseURL = "";
 			let userName = "";
 			let password = "";
-			window.onload = loadSettings;
-
-			const TAGGEDENDPOINTS = {
+			window.onload = async function() {
+				await loadSettings();  // Wait for the settings to load first
+				updateGauge();         // Then call updateGauge after settings are loaded
+				setInterval(updateGauge, 5000); // Set the interval to call every 5 seconds
+			};
+			
+			const ENDPOINTS = {
 				"powerDelivered": "power_delivered",
 				"powerReturned": "power_returned",
 				"secondary_indicator": "highest_peak_pwr",
 			};
-		
-			setInterval(updateGauge, 5000); // Call every 5 seconds
-			updateGauge();
+			
+			const powerIndicator = document.querySelector(".primary_indicator");
+			const secondaryIndicator = document.querySelector(".secondary_indicator");
+			let indicatorValues = [];
 			
 			async function updateGauge() {
 				try {
 					const data = await fetchValues(); // Get all the JSON data
-					let indicatorToConnect
-					let indicatorData
-					let label;
-					let value;
-					let unit;
+					
+					let indicatorToConnect;
+					let indicatorData;
+					let htmlLabel;
+					let htmlValue;
+					let htmlUnit;
+					
+					let powerDelivered = null
+					let powerReturned = null
 					
 					// Loop through the tagged data and
-					// if the tag matches some indicator, automatically attache the data to that indicator
-					
-					Object.entries(data).forEach(([endpointTag, jsonData]) => {
+					// if the tag matches some indicator, automatically attach the data to that indicator
+					Object.entries(data).forEach(([endpointTag, endpointData]) => {
+						indicatorToConnect = document.querySelector("." + endpointTag);
+						indicatorData = composeIndicatorData(endpointTag, endpointData);
 						
-						indicatorToConnect = document.querySelector("."+endpointTag);
-						indicatorData = composeIndicatorData(jsonData);
-
-						if (indicatorToConnect && indicatorData){
-						
-						// Select child elements within this indicator
-						label = indicatorToConnect.querySelector(".label");
-						value = indicatorToConnect.querySelector(".value");
-						unit = indicatorToConnect.querySelector(".unit");
-						
-						// Update text content of the HTML elements
-						if (label) label.textContent = indicatorData.quantity;
-						if (value) value.textContent = indicatorData.value ?? "___";
-						if (unit) unit.textContent = indicatorData.unit ?? "";
-						};
+						switch (endpointTag) {
+							case "powerDelivered":
+							powerDelivered = composeIndicatorData("powerDelivered", endpointData).value;
+							break;
+							case "powerReturned":
+							powerReturned = composeIndicatorData("powerReturned", endpointData).value;
+							
+							if ((powerDelivered != null) && (powerReturned != null)) {
+								nettoPower = powerDelivered - powerReturned;
+								indicatorValues.push(nettoPower);
+								
+								// When everything is in place to update the gauge, do so
+								if (powerIndicator && nettoPower) {
+									htmlLabel = powerIndicator.querySelector(".label");
+									htmlvalue = powerIndicator.querySelector(".value");
+									htmlUnit = powerIndicator.querySelector(".unit");
+									
+									htmlLabel.textContent = "Netto Vermogen"; // Update label
+									htmlvalue.textContent = nettoPower.toFixed(3);      // Update value
+									htmlUnit.textContent = "kW";               // Update unit
+								}
+							}
+							break;
+							
+							case "secondary_indicator":
+							autoConnect(indicatorToConnect, indicatorData);
+							break;
+							
+							default:
+							console.warn("⚠️ No handler for endpoint: " + endpointTag);
+							break;
+						}
 					});
 					
-					powerIndicator = document.querySelector(".primary_indicator")
-					const powerDelivered = composeIndicatorData(data, "powerDelivered");
-					const powerReturned = composeIndicatorData(data, "powerReturned");
-					const nettoPower = powerDelivered - powerReturned;
-					if (powerIndicator && nettoPower){
-					
-						// Select child elements within this indicator
-						label = powerIndicator.querySelector(".label");
-						value = powerIndicator.querySelector(".value");
-						unit = powerIndicator.querySelector(".unit");
-						
-						// Update text content of the HTML elements
-						if (label) label.textContent = "Netto Vermogen";
-						if (value) value.textContent = nettoPower;
-						if (unit) unit.textContent = "kW";
-					}
+					// Update gauge scale based on both indicatorValues
+					updateGaugeScale(indicatorValues[0], indicatorValues[1]);
 					
 				} catch (error) {
 					console.error("❌ Error in updateGauge:", error);
 				}
 			}
 			
+			function autoConnect(indicatorToConnect, indicatorData) {
+				if ((indicatorToConnect != null) && (indicatorData != null)) {
+					// Aways store values for indicators that can be autoconnected
+					indicatorValues.push(indicatorData.value);
+					
+					// Select child elements within this indicator
+					htmlLabel = powerIndicator.querySelector(".label");
+					htmlvalue = powerIndicator.querySelector(".value");
+					htmlUnit = powerIndicator.querySelector(".unit");
+					
+					// Update text content of the HTML elements
+					htmlLabel.textContent = indicatorData.quantity;
+					htmlvalue.textContent = indicatorData.value.toFixed(3);
+					htmlUnit.textContent = indicatorData.unit ?? "";
+				} else {
+					console.error("⚠️ Autconnection indicator failed");
+				}
+			}
+			
+			function updateGaugeScale(nettoPower, maxPower) {
+				// The angles used to define the gradient for the scale
+				// are based on a system where zero degrees is midscale or 12 o'clock
+				const gauge = document.querySelector(".gauge");
+				
+				// Define scale angles for the entire visible scale
+				const minScale = -135;
+				const maxScale = 135;
+				
+				// Define nominal range within the scale
+				const nominalMin = -90;
+				const nominalMax = 90;
+				const midScale = 0;
+				const nominalRange = 180;
+				
+				console.debug("[DEBUG] nettoPower:", nettoPower);
+				console.debug("[DEBUG] maxPower:", maxPower);
+				
+				
+				// NettoPower expressed as an angle
+				const percentage = (nettoPower / maxPower);
+				const currentAngle = nominalMin + (percentage * nominalRange);
+				console.debug("[DEBUG] Calculated currentAngle:", currentAngle);
+				
+				// Initialize gradient variables
+				let gradientColors;
+				
+				// Determine the gradient colours based on the current angle
+				// The gradient starts at -115 degrees (minScale) and other color positions are relative to that
+				switch (true) {
+					case currentAngle <= nominalMin:
+					// With negative values, colour in the lower left quadrant
+					gradientColors = ["transparant", "green", "transparant", "transparant", "transparant"];
+					break;
+					// With positive values that are below middle scale, colour in the upper left quadrant
+					case currentAngle <= midScale:
+					gradientColors = ["transparant", "transparant", "green", "yellow", "orange", "red"];
+					break;
+					case currentAngle >= midScale:
+					// with positive values that are below middle scale, colour in the upper right quadrant
+					gradientColors = ["transparant", "yellow", "orange", "red", "red"];
+					break;
+					case currentAngle >= nominalMax:
+					// with positive values that are on or above middle scale, colour in the right quadrant
+					default:
+					// out of range values to be handled later
+					break;
+				}
+				
+				// Apply the conic gradient with smooth transitions
+				gauge.style.background = `
+ radial-gradient(var(--background) 0 var(--cutout), transparent var(--cutout) 100%),
+ conic-gradient(from ${minScale}deg,green 0deg 45deg, orange, red 225deg 270deg, transparent 270deg 360deg)`;
+ 
+ // Apply the conic
+ console.debug("[DEBUG] ✅ Gradient applied successfully.");
+			}
+			
 			// Subroutines
 			async function loadSettings() {
 				try {
-					const response = await fetch('/config.json');  // Fetch the config file from the ESP32
-					if (!response.ok) throw new Error('❌ Failed to load config');
+					const response = await fetch("/DSMRsettings.json");  // Fetch the config file from the ESP32
+					if (!response.ok) throw new Error("❌ Failed to load config");
 					
 					const settings = await response.json();  // Parse JSON
 					
 					const hostName = settings.Hostname;
-					baseURL = `http://${hostName}/api/v2/sm/fields/`;
-					const credentials = settings.basic-auth;
+					baseURL = "http://" + hostName + ".local/api/v2/sm/fields/".toLowerCase();
+					const credentials = settings["basic-auth"];
 					userName = credentials.user;
 					password = credentials.pass;
+					
+					console.debug("[DEBUG] ⚙️✅ Settings loaded");
 					
 				} catch (error) {
 					console.error("❌ Error loading config:", error);
@@ -194,29 +293,28 @@
 			
 			async function fetchValues() {
 				const headers = new Headers();
-				headers.set('Authorization', 'Basic ' + btoa(`${userName}:${password}`));
-				headers.set('Content-Type', 'application/json');
+				headers.set("Authorization", "Basic " + btoa(userName + ":" + password));
+				headers.set("Content-Type", "application/json");
 				
-				const requests = Object.entries(TAGGEDENDPOINTS).map(async ([endpointTag, endpoint]) => {
+				const requests = Object.entries(ENDPOINTS).map(async ([endpointTag, endpoint]) => {
 					const cleanbaseURL = baseURL.replace(/\/$/, ""); // Ensure baseURL does not end with '/'
 					const cleanEndpoint = endpoint.replace(/^\//, ""); // Ensure endpoint does not start with '/'
 					
-					const url = `${cleanbaseURL}/${cleanEndpoint}`;
-					console.log("Fetching:", url);
-					
+					const url = cleanbaseURL + "/" + cleanEndpoint;
 					try {
+						console.debug("%c[DEBUG] ⏬️ Fetching: " + url, "color: grey;");
 						const response = await fetch(url, { method: "GET", headers });
-						console.log("Response:", response);
 						
 						if (!response.ok) {
-							throw new Error(`Error ${response.status}: ${response.statusText}`);
+							throw new Error("Error " + response.status + ": " + response.statusText);
 						}
-						
 						const jsonData = await response.json();
+						console.debug("[DEBUG] Received JSON data:", jsonData);
+						console.debug("[DEBUG] 🟢⇣ Response: ", jsonData);
 						return [endpointTag, jsonData]; // Return as a key-value pair
 						
 					} catch (error) {
-						console.error(`Fetch error for ${endpointTag}:`, error);
+						console.error("❌ Fetch error for " + endpointTag + ":", error);
 						return [endpointTag, null]; // Keep consistent structure
 					}
 				});
@@ -225,33 +323,12 @@
 				return Object.fromEntries(await Promise.all(requests));
 			}
 			
-			function composeIndicatorData(jsonData, endpointTag) {
-				
-				var endpointData
-				if (endpointTag != null) {
-					endpointData = jsonData[endpointTag];
-				}else{
-					endpointData = jsonData;
-				}
-				const dataKey = Object.keys(endpointData).find(key => key !== "timestamp"); // Ignore the 'timestamp' key
-				const dataNode = endpointData[dataKey];
-				const indicatorData = { quantity: endpointTag, ...jsonData[dataNode] }; // Merge the tagName with the existing endpoint data
+			function composeIndicatorData(endpointTag, endpointData) {
+				const valuesKey = Object.keys(endpointData).find(key => key !== "timestamp"); // Find a key other than "timestamp"
+				const values = endpointData[valuesKey]; // Get the values associated with that key
+				const indicatorData = { quantity: endpointTag, ...values }; // Merge tag and values
+				console.debug("[DEBUG] composeIndicatorData output:", indicatorData);
 				return indicatorData;
-				
-			}
-			
-			// Function to update the color based on power value
-			function getColor(value, maxValue) {
-				if (value < 0) {
-					return "rgb(100, 200, 100)";  // Negative power (green for return power)
-				} else if (value > maxValue) {
-					return "rgb(220, 100, 100)";  // Over max power (red)
-				} else {
-					let ratio = value / maxValue;
-					let red = Math.min(255, Math.floor(255 * ratio));
-					let green = Math.max(0, Math.floor(200 - 200 * ratio));
-					return `rgb(${red}, ${green}, 50)`;  // Gradient from green to red
-				}
 			}
 			
 		</script>
