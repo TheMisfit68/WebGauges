@@ -118,8 +118,8 @@
 			let password = "";
 			window.onload = async function() {
 				await loadSettings();  // Wait for the settings to load first
-				updateGauge();         // Then call updateGauge after settings are loaded
-				setInterval(updateGauge, 5000); // Set the interval to call every 5 seconds
+				updateGaugeValues();         // Then call updateGaugeValues after settings are loaded
+				setInterval(updateGaugeValues, 5000); // Set the interval to call every 5 seconds
 			};
 			
 			const ENDPOINTS = {
@@ -132,7 +132,7 @@
 			const secondaryIndicator = document.querySelector(".secondary_indicator");
 			let indicatorValues = [];
 			
-			async function updateGauge() {
+			async function updateGaugeValues() {
 				try {
 					const data = await fetchValues(); // Get all the JSON data
 					
@@ -142,8 +142,8 @@
 					let htmlValue;
 					let htmlUnit;
 					
-					let powerDelivered = null
-					let powerReturned = null
+					let powerDelivered = null;
+					let powerReturned = null;
 					
 					// Loop through the tagged data and
 					// if the tag matches some indicator, automatically attach the data to that indicator
@@ -186,10 +186,10 @@
 					});
 					
 					// Update gauge scale based on both indicatorValues
-					updateGaugeScale(indicatorValues[0], indicatorValues[1]);
+					updateGaugeStyle(indicatorValues[0], indicatorValues[1]);
 					
 				} catch (error) {
-					console.error("❌ Error in updateGauge:", error);
+					console.error("❌ Error in updateGaugeValues:", error);
 				}
 			}
 			
@@ -212,63 +212,48 @@
 				}
 			}
 			
-			function updateGaugeScale(nettoPower, maxPower) {
+			function updateGaugeStyle(nettoPower, maxPower) {
 				// The angles used to define the gradient for the scale
 				// are based on a system where zero degrees is midscale or 12 o'clock
 				const gauge = document.querySelector(".gauge");
 				
 				// Define scale angles for the entire visible scale
 				const minScale = -135;
-				const maxScale = 135;
+				const maxScale = +135;
 				
-				// Define nominal range within the scale
+				// Define nominal range within that scale
 				const nominalMin = -90;
-				const nominalMax = 90;
-				const midScale = 0;
-				const nominalRange = 180;
-				
-				console.debug("[DEBUG] nettoPower:", nettoPower);
-				console.debug("[DEBUG] maxPower:", maxPower);
-				
+				const nominalMax = +90;
+				const nominalRange = nominalMax - nominalMin;
 				
 				// NettoPower expressed as an angle
 				const percentage = (nettoPower / maxPower);
-				const currentAngle = nominalMin + (percentage * nominalRange);
+				let currentAngle = nominalMin + (percentage * nominalRange);
+				// Always limit the angle within the scale
+				if (currentAngle <= minScale) {
+					currentAngle = minScale;
+				}
+				if (currentAngle >= maxScale) {
+					currentAngle = maxScale;
+				}
 				console.debug("[DEBUG] Calculated currentAngle:", currentAngle);
 				
-				// Initialize gradient variables
-				let gradientColors;
+				const gaugeCenter = `radial-gradient(var(--background) 0 var(--cutout), transparent var(--cutout) 100%)`;
+				const gaugeScale = `conic-gradient(from ${minScale}deg, green 0deg 45deg, orange, red 225deg 270deg, transparent 270deg 360deg)`;
 				
-				// Determine the gradient colours based on the current angle
-				// The gradient starts at -115 degrees (minScale) and other color positions are relative to that
-				switch (true) {
-					case currentAngle <= nominalMin:
-					// With negative values, colour in the lower left quadrant
-					gradientColors = ["transparant", "green", "transparant", "transparant", "transparant"];
-					break;
-					// With positive values that are below middle scale, colour in the upper left quadrant
-					case currentAngle <= midScale:
-					gradientColors = ["transparant", "transparant", "green", "yellow", "orange", "red"];
-					break;
-					case currentAngle >= midScale:
-					// with positive values that are below middle scale, colour in the upper right quadrant
-					gradientColors = ["transparant", "yellow", "orange", "red", "red"];
-					break;
-					case currentAngle >= nominalMax:
-					// with positive values that are on or above middle scale, colour in the right quadrant
-					default:
-					// out of range values to be handled later
-					break;
+				let scaleCover
+				if (false) {
+					scaleCover = `conic-gradient(from ${minScale}deg, white 45deg, transparent ${minScale}deg 360deg)`;
+				} else {
+					scaleCover = `conic-gradient(from ${nominalMin}deg, white 225deg,transparent ${maxScale}deg 360deg)`;
 				}
+					
 				
-				// Apply the conic gradient with smooth transitions
-				gauge.style.background = `
- radial-gradient(var(--background) 0 var(--cutout), transparent var(--cutout) 100%),
- conic-gradient(from ${minScale}deg,green 0deg 45deg, orange, red 225deg 270deg, transparent 270deg 360deg)`;
- 
- // Apply the conic
- console.debug("[DEBUG] ✅ Gradient applied successfully.");
+// Apply the gauge components as CSS background
+gauge.style.background = `
+ ${scaleCover},${gaugeCenter},${gaugeScale}`;
 			}
+			
 			
 			// Subroutines
 			async function loadSettings() {
