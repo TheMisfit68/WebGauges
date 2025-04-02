@@ -110,13 +110,13 @@
 		<div class="gauge">
 			<div class="x-axis-line"></div>
 			<div class="primary_indicator">
-				<div class="label"></div>
+				<div class="label" data-customLabel="Netto Vermogen"></div>
 				<div class="value-container">
 					<span class="value">0.0</span><span class="unit"></span>
 				</div>
 			</div>
 			<div class="secondary_indicator">
-				<div class="label"></div>
+				<div class="label" data-customLabel="Maandpiek"></div>
 				<div class="value-container">
 					<span class="value">0.0</span><span class="unit"></span>
 				</div>
@@ -185,7 +185,15 @@
 										break;
 									}
 									
-									htmlLabel.textContent = "Netto Vermogen"; // Update label
+									// Update text content of the HTML elements
+									
+									// Check to see if a custom label is provided
+									const customLabel = htmlLabel.getAttribute("data-customLabel");
+									if (customLabel != null) {  // Fix: added parentheses around condition
+										htmlLabel.textContent = customLabel;
+									} else {
+										htmlLabel.textContent = indicatorData.quantity;
+									}
 									htmlvalue.textContent = nettoPower.toFixed(3);      // Update value
 									htmlUnit.textContent = "kW";               // Update unit
 								}
@@ -212,7 +220,7 @@
 			
 			function autoConnect(indicatorToConnect, indicatorData) {
 				if ((indicatorToConnect != null) && (indicatorData != null)) {
-					// Aways store values for indicators that can be autoconnected
+					// Always store values for indicators that can be autoconnected
 					indicatorValues.push(indicatorData.value);
 					
 					// Select child elements within this indicator
@@ -221,7 +229,15 @@
 					const htmlUnit = indicatorToConnect.querySelector(".unit");
 					
 					// Update text content of the HTML elements
-					htmlLabel.textContent = indicatorData.quantity;
+					
+					// Check to see if a custom label is provided
+					const customLabel = htmlLabel.getAttribute("data-customLabel");
+					if (customLabel != null) {  // Fix: added parentheses around condition
+						htmlLabel.textContent = customLabel;
+					} else {
+						htmlLabel.textContent = indicatorData.quantity;
+					}
+					
 					htmlvalue.textContent = indicatorData.value.toFixed(3);
 					htmlUnit.textContent = indicatorData.unit ?? "";
 				} else {
