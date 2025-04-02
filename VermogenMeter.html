@@ -213,7 +213,7 @@
 			}
 			
 			function updateGaugeStyle(nettoPower, maxPower) {
-				
+								
 				// The angles used to define the gradient for the scale
 				// are based on a system where zero degrees is midscale or 12 o'clock
 				// Gradients that start with a 'from' parameter will start at the specified angle and
@@ -247,11 +247,20 @@
 				
 				let scaleCover
 				if (nettoPower >= 0) {
-					scaleCover = `conic-gradient(from ${startOfScale}deg, white ${nominalMin}deg, transparent ${nominalMin}deg ${currentAngle}deg, rgba(255, 255, 255, 0.75) ${currentAngle}deg  ${maxScale}deg,transparent ${maxScale}deg 360deg )`;
+					scaleCover = `conic-gradient(from ${startOfScale}deg, 
+white ${startOfScale}deg ${nominalMin}deg, 
+transparent ${nominalMin}deg ${currentAngle}deg,
+rgba(255, 255, 255, 0.75) ${currentAngle}deg  ${maxScale}deg,
+transparent ${maxScale}deg 360deg 
+)`;
 				} else {
-					scaleCover = `conic-gradient(from ${nominalMin}deg, white 225deg,transparent ${endOfScale}deg 360deg)`;
+					scaleCover = `conic-gradient(from ${startOfScale}deg, 
+rgba(255, 255, 255, 0.75) ${startOfScale}deg  ${currentAngle}deg,
+transparent ${currentAngle}deg ${nominalMin}deg,
+white ${nominalMin}deg ${maxScale}deg,
+transparent ${maxScale}deg 360deg 
+)`;
 				}
-				
 				
 				// Apply the gauge components as CSS background
 				gauge.style.background = `${scaleCover},${gaugeCenter},${gaugeScale}`;
