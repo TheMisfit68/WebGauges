@@ -24,22 +24,13 @@
 					.x-axis-line {
 						position: absolute;
 						top: 50%;
-						left: 0;
-						width: 100%;
+						left: -10%;
+						width: 150%;
 						height: 2px;
 						background-color: grey;
 						transform: translateY(-50%);
 					}
 					
-					/* Primary Indicator */
-					.primary_indicator,
-					.secondary_indicator {
-						position: absolute;
-						bottom: 0;
-						left: 50%;
-						transform: translateX(-50%);
-						text-align: center;
-					}
 					
 					.primary_indicator {
 						position: absolute;
@@ -57,42 +48,35 @@
 						font-size: 1.5rem;
 						font-weight: bold;
 						color: #666; /* Dimmed */
+						white-space: nowrap; /* Prevent text from wrapping */
 					}
+
 					
-					.primary_indicator .value,
-					.secondary_indicator .value {
-						display: inline-block;
-						font-size: 2rem;
-						font-weight: bold;
-						color: #333;
-						transition: color 0.2s linear;
-					}
-					
-					.primary_indicator .unit,
-					.secondary_indicator .unit {
-						display: inline-block;
+					.primary_indicator .unit{
+						display: inline;
 						margin-left: 2px; /* Small spacing between value and unit */
 					}
 					
-					/* Secondary Indicator */
 					.secondary_indicator {
 						position: absolute;
-						bottom: 0; /* Set to position at the very bottom */
-						left: 50%;
-						transform: translateX(-50%);
-						text-align: center;
+						margin-left: 10px; /* Place it to the right of the gauge */
+						left: 100%; /* Place it to the right of the gauge */
+						top: 50%; /* Position it at the middle vertically */
+						transform: translateY(-50%); /* Adjust it to be centered by moving up by half of its height */
+						/* Additional styling like padding, font-size, etc. */
 					}
 					
 					.secondary_indicator .label {
 						font-size: 1.5rem;
 						font-weight: bold;
-						color: #666; /* Dimmed */
+						color: red;
+						white-space: nowrap; /* Prevent text from wrapping */
 					}
 					
 					.secondary_indicator .value {
 						font-size: 1.5rem;
 						font-weight: bold;
-						color: #333;
+						color: red;
 						margin-bottom: 5px;
 						transition: color 0.2s linear;
 						display: inline-flex; /* Keep the unit inline with the value */
@@ -100,9 +84,11 @@
 					}
 					
 					.secondary_indicator .unit {
+						color: red;
 						display: inline;
 						margin-left: 2px; /* Small spacing between value and unit */
 					}
+					
 				</style>
 			</head>
 	<body>
@@ -155,11 +141,6 @@
 					
 					let powerDelivered = null;
 					let powerReturned = null;
-					
-					// Declare powerDelivered and powerReturned at the top
-					let powerDelivered;
-					let powerReturned;
-					let nettoPower;
 					
 					// Loop through the tagged data and
 					// if the tag matches some indicator, automatically attach the data to that indicator
