@@ -213,45 +213,48 @@
 			}
 			
 			function updateGaugeStyle(nettoPower, maxPower) {
+				
 				// The angles used to define the gradient for the scale
 				// are based on a system where zero degrees is midscale or 12 o'clock
+				// Gradients that start with a 'from' parameter will start at the specified angle and
+				// gradientpoints are defined relative from that angle
 				const gauge = document.querySelector(".gauge");
 				
-				// Define scale angles for the entire visible scale
-				const minScale = -135;
-				const maxScale = +135;
+				// Define abosolute angle that the scale will start at
+				const startOfScale = -135;
 				
-				// Define nominal range within that scale
-				const nominalMin = -90;
-				const nominalMax = +90;
-				const nominalRange = nominalMax - nominalMin;
+				// Define relative angles within that scale
+				const minScale = 0;
+				const nominalMin = 45;
+				const nominalMax = 225;
+				const maxScale = 270;
 				
-				// NettoPower expressed as an angle
+				// NettoPower expressed as an angle within the scale
 				const percentage = (nettoPower / maxPower);
-				let currentAngle = nominalMin + (percentage * nominalRange);
-				// Always limit the angle within the scale
+				const nominalRange = (nominalMax - nominalMin);
+				let currentAngle = nominalMin+(percentage * nominalRange);
+				// Always limit the angle within the defined ranges
 				if (currentAngle <= minScale) {
 					currentAngle = minScale;
 				}
 				if (currentAngle >= maxScale) {
 					currentAngle = maxScale;
 				}
-				console.debug("[DEBUG] Calculated currentAngle:", currentAngle);
+				console.debug("[DEBUG] nominalMin nettpower, maxpower percentage and currentAngle:",nominalMin, nettoPower, maxPower, percentage, currentAngle);
 				
 				const gaugeCenter = `radial-gradient(var(--background) 0 var(--cutout), transparent var(--cutout) 100%)`;
-				const gaugeScale = `conic-gradient(from ${minScale}deg, green 0deg 45deg, orange, red 225deg 270deg, transparent 270deg 360deg)`;
+				const gaugeScale = `conic-gradient(from ${startOfScale}deg, green 0deg 45deg, orange, red 225deg 270deg, transparent 270deg 360deg)`;
 				
 				let scaleCover
-				if (false) {
-					scaleCover = `conic-gradient(from ${minScale}deg, white 45deg, transparent ${minScale}deg 360deg)`;
+				if (nettoPower >= 0) {
+					scaleCover = `conic-gradient(from ${startOfScale}deg, white ${nominalMin}deg, transparent ${nominalMin}deg ${currentAngle}deg, rgba(255, 255, 255, 0.75) ${currentAngle}deg  ${maxScale}deg,transparent ${maxScale}deg 360deg )`;
 				} else {
-					scaleCover = `conic-gradient(from ${nominalMin}deg, white 225deg,transparent ${maxScale}deg 360deg)`;
+					scaleCover = `conic-gradient(from ${nominalMin}deg, white 225deg,transparent ${endOfScale}deg 360deg)`;
 				}
-					
 				
-// Apply the gauge components as CSS background
-gauge.style.background = `
- ${scaleCover},${gaugeCenter},${gaugeScale}`;
+				
+				// Apply the gauge components as CSS background
+				gauge.style.background = `${scaleCover},${gaugeCenter},${gaugeScale}`;
 			}
 			
 			
