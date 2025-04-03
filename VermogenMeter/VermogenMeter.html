@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	
+	<title>Vermogen Meter</title>
+	
+	<link rel="stylesheet" href="VermogenMeter.css">
+	<script src="VermogenMeter.js" defer></script>
+</head>
+<body>
+	<div class="gauge">
+		<div class="indicator" id="zero-indicator">
+			<div class="label"></div>
+			<span class="value">0</span><span class="unit" data-customUnit="kW">kW</span></div>
+		
+		<div class="x-axis-line"></div>
+		
+		<div class="indicator" id="primary-indicator">
+			<div class="label" data-customLabel="Netto Vermogen"></div>
+			
+			<div class="value-container"><span class="value">0.0</span> <span class="unit" data-customUnit="kW"></span></div>
+		</div>
+		
+		<div class="indicator" id="secondary-indicator">
+			<div class="label" data-customLabel="Maandpiek"></div>
+			
+			<div class="value-container"><span class="value">0.0</span><span class="unit"></span></div>
+		</div>
+		
+		<div class="indicator" id="rest-indicator">
+			<div class="label" data-customLabel="Nog over"></div>
+			
+			<div class="value-container"><span class="value">0.0</span><span class="unit" data-customUnit="kW"></span></div>
+		</div>
+	</div>
+</body>
+</html>
