@@ -32,18 +32,18 @@
 
 .label {
 	height: 20px;
-	font-weight: bold;
 	white-space: nowrap; /* Prevent text from wrapping */
 }
 
 .value {
-	height: 25px;
+	height: 20px;
+	font-weight: bold;
 	font-size: 1.5rem;
 	padding-right: 5px;
 }
 
 .unit {
-	height: 25px;
+	height: 20px;
 	font-size: 1.0rem;
 	display: inline-flex;
 }
@@ -69,6 +69,7 @@
 	position: absolute;
 	left: 50%;
 	top: 100%;
+	padding-bottom: 10px;
 	transform: translate(-50%, -100%);
 	text-align: center;
 }

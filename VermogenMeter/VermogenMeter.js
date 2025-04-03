@@ -99,6 +99,9 @@ async function updateGaugeValues() {
 		
 		// Update gauge scale based on both indicatorValues
 		updateGaugeStyle(nettoPower, maxPower);
+		// Set dynamic color for the indicators
+		setDynamicIndicatorColor(powerIndicator, nettoPower, maxPower);
+		setDynamicIndicatorColor(restIndicator, nettoPower, maxPower);
 		
 	} catch (error) {
 		console.error("❌ Error in updateGaugeValues:", error);
@@ -260,15 +263,19 @@ function composeIndicatorData(endpointTag, endpointData) {
 	return indicatorData;
 }
 
-function setColorPrimaryIndicator(nettoPower, maxPower) {
-	if (nettoPower < 0) {
-		return "rgb(100, 200, 100)";  // Negative power (green for return power)
-	} else if (nettoPower > maxPower) {
-		return "rgb(220, 100, 100)";  // Over max power (red)
+function setDynamicIndicatorColor(indicator, nettoPower, maxPower) {
+	let dynamicColor = "gray";
+	
+	const ratio = nettoPower / maxPower;
+	if (ratio <= 0.25) {
+		dynamicColor = "green";
+	} else if (ratio <= 0.5) {
+		dynamicColor = "yellow";
+	} else if (ratio <= 0.75) {
+		dynamicColor = "rgb(255, 147, 0)"; // Dark orange
 	} else {
-		let ratio = value / maxValue;
-		let red = Math.min(255, Math.floor(255 * ratio));
-		let green = Math.max(0, Math.floor(200 - 200 * ratio));
-		return `rgb(${red}, ${green}, 50)`;  // Gradient from green to red
+		dynamicColor = "red";
 	}
+	
+	indicator.style.color = dynamicColor; // Apply color to the element
 }
