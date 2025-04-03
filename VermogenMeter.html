@@ -19,90 +19,94 @@
 						justify-content: center;
 						align-items: center;
 						position: relative;
+						margin-top: 30px;
+						margin-left: 60px;
 					}
 					
 					.x-axis-line {
 						position: absolute;
 						top: 50%;
-						left: -10%;
-						width: 150%;
+						left: -25%;
+						width: 450px;
 						height: 2px;
 						background-color: grey;
 						transform: translateY(-50%);
 					}
 					
+					.indicator {
+						position: absolute;
+						top: 50%;
+						transform: translateY(-50%);
+						font-size: 1.5rem;
+						color: #666; /* Dimmed */
+					}
+					
+					.label {
+						font-weight: bold;
+						white-space: nowrap; /* Prevent text from wrapping */
+					}
+					
+					.value {
+						padding-right: 5px;
+					}
+					
+					.unit {
+						font-size: 1.0rem;
+						display: inline-flex;
+					}
+					
+					.zero-indicator {
+						left: -25%;
+						text-align: right;
+					}
 					
 					.primary_indicator {
-						position: absolute;
-						top: 52%;
 						left: 50%;
-						transform: translate(-50%, -50%);
-						font-size: 2rem;
-						font-weight: bold;
-						color: rgb(100, 200, 100); /* Initial color */
-						transition: color 0.2s linear;
+						transform: translateX(-50%);
 						text-align: center;
 					}
 					
-					.primary_indicator .label {
-						font-size: 1.5rem;
-						font-weight: bold;
-						color: #666; /* Dimmed */
-						white-space: nowrap; /* Prevent text from wrapping */
-					}
-
-					
-					.primary_indicator .unit{
-						display: inline;
-						margin-left: 2px; /* Small spacing between value and unit */
-					}
-					
 					.secondary_indicator {
-						position: absolute;
-						margin-left: 10px; /* Place it to the right of the gauge */
 						left: 100%; /* Place it to the right of the gauge */
-						top: 50%; /* Position it at the middle vertically */
-						transform: translateY(-50%); /* Adjust it to be centered by moving up by half of its height */
-						/* Additional styling like padding, font-size, etc. */
+						margin-left: 10px; /* Place it slightly to the right of the gauge */
+						text-align: left;
+						color: red;
 					}
 					
-					.secondary_indicator .label {
-						font-size: 1.5rem;
-						font-weight: bold;
-						color: red;
-						white-space: nowrap; /* Prevent text from wrapping */
+					.rest_indicator {
+						top: 0%;
+						left: 100%; /* Place it to the right of the gauge */
+						margin-left: 10px; /* Place it slightly to the right of the gauge */
+						text-align: left;
+						color: orange;
 					}
 					
-					.secondary_indicator .value {
-						font-size: 1.5rem;
-						font-weight: bold;
-						color: red;
-						margin-bottom: 5px;
-						transition: color 0.2s linear;
-						display: inline-flex; /* Keep the unit inline with the value */
-						align-items: baseline; /* Align baseline for a natural look */
-					}
 					
-					.secondary_indicator .unit {
-						color: red;
-						display: inline;
-						margin-left: 2px; /* Small spacing between value and unit */
-					}
 					
 				</style>
 			</head>
 	<body>
 		
 		<div class="gauge">
+			<div class="indicator zero-indicator">
+				<span class="value">0.0</span><span class="unit">kW</span>
+			</div>
+			
 			<div class="x-axis-line"></div>
-			<div class="primary_indicator">
+			<div class="indicator primary_indicator">
 				<div class="label" data-customLabel="Netto Vermogen"></div>
+				<div class="value-container">
+					<span class="value">0.0</span> <span class="unit"></span>
+				</div>
+			</div>
+			<div class="indicator secondary_indicator">
+				<div class="label" data-customLabel="Maandpiek"></div>
 				<div class="value-container">
 					<span class="value">0.0</span><span class="unit"></span>
 				</div>
 			</div>
-			<div class="secondary_indicator">
-				<div class="label" data-customLabel="Maandpiek"></div>
+			<div class="indicator rest_indicator">
+				<div class="label" data-customLabel="Nog over"></div>
 				<div class="value-container">
 					<span class="value">0.0</span><span class="unit"></span>
 				</div>
@@ -125,9 +129,11 @@
 				"secondary_indicator": "highest_peak_pwr",
 			};
 			
+			const zeroIndicator = document.querySelector(".primary_indicator");
 			const powerIndicator = document.querySelector(".primary_indicator");
 			const secondaryIndicator = document.querySelector(".secondary_indicator");
-			let indicatorValues = [];
+			const restIndicator = document.querySelector(".rest_indicator");
+			let indicatorValues = [0];
 			
 			async function updateGaugeValues() {
 				try {
@@ -141,8 +147,11 @@
 					
 					let powerDelivered = null;
 					let powerReturned = null;
+					let nettoPower = null;
+					let maxPower = null;
+					let restPower = null;
 					
-					// Loop through the tagged data and
+					// Loop through the tagged data store the values
 					// if the tag matches some indicator, automatically attach the data to that indicator
 					Object.entries(data).forEach(([endpointTag, endpointData]) => {
 						
@@ -155,39 +164,22 @@
 							break;
 							case "powerReturned":
 							powerReturned = composeIndicatorData("powerReturned", endpointData).value;
-							
-							if ((powerDelivered != null) && (powerReturned != null)) {
-								const nettoPower = powerDelivered - powerReturned;
-								indicatorValues.push(nettoPower);
-								
-								// When everything is in place to update the gauge, do so
-								if (powerIndicator && nettoPower) {
-									console.log("Updating primary indicator with nettoPower:", nettoPower);
-									htmlLabel = powerIndicator.querySelector(".label");
-									htmlvalue = powerIndicator.querySelector(".value");
-									htmlUnit = powerIndicator.querySelector(".unit");
-									if (htmlLabel == null || htmlvalue == null || htmlUnit == null) {
-										console.error("⚠️ Missing HTML elements for primary indicator");
-										break;
-									}
-									
-									// Update text content of the HTML elements
-									
-									// Check to see if a custom label is provided
-									const customLabel = htmlLabel.getAttribute("data-customLabel");
-									if (customLabel != null) {  // Fix: added parentheses around condition
-										htmlLabel.textContent = customLabel;
-									} else {
-										htmlLabel.textContent = indicatorData.quantity;
-									}
-									htmlvalue.textContent = nettoPower.toFixed(3);      // Update value
-									htmlUnit.textContent = "kW";               // Update unit
-								}
-							}
+							nettoPower = powerDelivered - powerReturned;
+							indicatorValues.push(nettoPower);
 							break;
 							
 							case "secondary_indicator":
+							maxPower = indicatorData.value;
+							if (maxPower <= 2.5) {
+								maxPower = 2.5;
+							}
+							restPower = maxPower-nettoPower;
+							if (restPower < 0) {
+								restPower = 0;
+							}
 							autoConnect(indicatorToConnect, indicatorData);
+							indicatorValues.push(maxPower);
+							indicatorValues.push(restPower);
 							break;
 							
 							default:
@@ -196,13 +188,50 @@
 						}
 					});
 					
+					// Update indicators that use calculated values
+					if (powerIndicator && nettoPower) {
+						
+						htmlLabel = powerIndicator.querySelector(".label");
+						htmlvalue = powerIndicator.querySelector(".value");
+						htmlUnit = powerIndicator.querySelector(".unit");
+						
+						// Check to see if a custom label is provided
+						const customLabel = htmlLabel.getAttribute("data-customLabel");
+						if (customLabel != null) {  // Fix: added parentheses around condition
+							htmlLabel.textContent = customLabel;
+						} else {
+							htmlLabel.textContent = powerIndicator.quantity;
+						}
+						htmlvalue.textContent = nettoPower.toFixed(3);      // Update value
+						htmlUnit.textContent = "kW";               // Update unit
+					}
+					
+					// When everything is in place to update the gauge, do so
+					if (restIndicator && restPower) {
+						
+						htmlLabel = restIndicator.querySelector(".label");
+						htmlvalue = restIndicator.querySelector(".value");
+						htmlUnit = restIndicator.querySelector(".unit");
+						
+						// Check to see if a custom label is provided
+						const customLabel = htmlLabel.getAttribute("data-customLabel");
+						if (customLabel != null) {  // Fix: added parentheses around condition
+							htmlLabel.textContent = customLabel;
+						} else {
+							htmlLabel.textContent = restIndicator.quantity;
+						}
+						htmlvalue.textContent = nettoPower.toFixed(3);      // Update value
+						htmlUnit.textContent = "kW";               // Update unit
+					}
+					
 					// Update gauge scale based on both indicatorValues
-					updateGaugeStyle(indicatorValues[0], indicatorValues[1]);
+					updateGaugeStyle(indicatorValues[1], indicatorValues[2]);
 					
 				} catch (error) {
 					console.error("❌ Error in updateGaugeValues:", error);
 				}
 			}
+			
 			
 			function autoConnect(indicatorToConnect, indicatorData) {
 				if ((indicatorToConnect != null) && (indicatorData != null)) {
@@ -268,27 +297,26 @@ orange,
 red ${nominalMax}deg ${maxScale}deg, 
 transparent ${maxScale}deg 360deg
 )`;
-				let scaleCover
-				if (nettoPower >= 0) {
-					scaleCover = `conic-gradient(from ${startOfScale}deg, 
+let scaleCover
+if (nettoPower >= 0) {
+	scaleCover = `conic-gradient(from ${startOfScale}deg, 
 rgba(255, 255, 255, 0.75) ${startOfScale}deg ${nominalMin}deg, 
 transparent ${nominalMin}deg ${currentAngle}deg,
 rgba(255, 255, 255, 0.75) ${currentAngle}deg  ${maxScale}deg,
 transparent ${maxScale}deg 360deg 
 )`;
-				} else {
-					scaleCover = `conic-gradient(from ${startOfScale}deg, 
+} else {
+	scaleCover = `conic-gradient(from ${startOfScale}deg, 
 rgba(255, 255, 255, 0.75) ${startOfScale}deg  ${currentAngle}deg,
 transparent ${currentAngle}deg ${nominalMin}deg,
 rgba(255, 255, 255, 0.75) ${nominalMin}deg ${maxScale}deg,
 transparent ${maxScale}deg 360deg 
 )`;
-				}
-				
-				// Apply the gauge components as CSS background
-				gauge.style.background = `${scaleCover},${gaugeCenter},${gaugeScale}`;
+}
+
+// Apply the gauge components as CSS background
+gauge.style.background = `${scaleCover},${gaugeCenter},${gaugeScale}`;
 			}
-			
 			
 			// Subroutines
 			async function loadSettings() {
@@ -347,6 +375,19 @@ transparent ${maxScale}deg 360deg
 				const values = endpointData[valuesKey]; // Get the values associated with that key
 				const indicatorData = { quantity: endpointTag, ...values }; // Merge tag and values
 				return indicatorData;
+			}
+			
+			function setColorPrimaryIndicator(nettoPower, maxPower) {
+				if (nettoPower < 0) {
+					return "rgb(100, 200, 100)";  // Negative power (green for return power)
+				} else if (nettoPower > maxPower) {
+					return "rgb(220, 100, 100)";  // Over max power (red)
+				} else {
+					let ratio = value / maxValue;
+					let red = Math.min(255, Math.floor(255 * ratio));
+					let green = Math.max(0, Math.floor(200 - 200 * ratio));
+					return `rgb(${red}, ${green}, 50)`;  // Gradient from green to red
+				}
 			}
 			
 		</script>
