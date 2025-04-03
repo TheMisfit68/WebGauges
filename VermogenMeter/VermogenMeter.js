@@ -75,26 +75,12 @@ async function updateGaugeValues() {
 		
 		// Update indicators that use calculated values
 		if (powerIndicator && nettoPower) {
-			
-			htmlLabel = powerIndicator.querySelector(".label");
-			htmlvalue = powerIndicator.querySelector(".value");
-			htmlUnit = powerIndicator.querySelector(".unit");
-			
-			htmlLabel.textContent = htmlLabel.getAttribute("data-customLabel");
-			htmlvalue.textContent = nettoPower.toFixed(3);      // Update value
-			htmlUnit.textContent = htmlUnit.getAttribute("data-customUnit");
+			connectValues(powerIndicator, null, nettoPower, null); // Custom label and units are present so no need to pass them
 		}
 		
 		// When everything is in place to update the gauge, do so
 		if (restIndicator && restPower) {
-			
-			htmlLabel = restIndicator.querySelector(".label");
-			htmlvalue = restIndicator.querySelector(".value");
-			htmlUnit = restIndicator.querySelector(".unit");
-			
-			htmlLabel.textContent = htmlLabel.getAttribute("data-customLabel");
-			htmlvalue.textContent = restPower.toFixed(3);      // Update value
-			htmlUnit.textContent = htmlUnit.getAttribute("data-customUnit");
+			connectValues(restIndicator, null, restPower, null); // Custom label and units are present so no need to pass them
 		}
 		
 		// Update gauge scale based on both indicatorValues
@@ -131,12 +117,17 @@ function connectValues(indicatorToConnect, label, value, unit) {
 			htmlLabel.textContent = label;
 		}
 		
-		htmlvalue.textContent = value.toFixed(3);
+		// Format the value to 3 decimal places and use the correct decimal and thousands separators for the system
+		const formattedValue = new Intl.NumberFormat(undefined, {
+			minimumFractionDigits: 3,
+			maximumFractionDigits: 3,
+		}).format(value);
+		htmlvalue.textContent = formattedValue;
 		
 		// Check to see if a custom unit is provided
 		const customUnit = htmlUnit.getAttribute("data-customUnit");
 		if (customUnit != null) {
-			htmUnit.textContent = customUnit;
+			htmlUnit.textContent = customUnit;
 		} else {
 			htmlUnit.textContent = unit;
 		}
