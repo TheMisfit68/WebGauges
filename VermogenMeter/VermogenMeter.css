@@ -1,0 +1,87 @@
+/* General Gauge Styles */
+.gauge {
+	--size: 250px;
+	--cutout: 50%;
+	--background: white;
+	width: var(--size);
+	height: var(--size);
+	border-radius: 50%;
+	outline: 1.5px solid gray;
+	box-shadow: inset 0 0 0 1.5px gray;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: relative;
+	margin-top: 30px;
+	margin-left: 60px;
+}
+
+.x-axis-line {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	
+	left: -25%;
+	width: 450px;
+	height: 2px;
+	background-color: grey;
+}
+
+.indicator {
+	position: absolute;
+	display: block;
+	top: 50%;
+	transform: translateY(-100%);
+	font-size: 1.5rem;
+	color: #666; /* Dimmed */
+}
+
+.label {
+	height: 25px;
+	font-weight: bold;
+	white-space: nowrap; /* Prevent text from wrapping */
+}
+
+.value {
+	height: 25px;
+	padding-right: 5px;
+}
+
+.unit {
+	height: 25px;
+	font-size: 1.0rem;
+	display: inline-flex;
+}
+
+#zero-indicator {
+	left: -20%;
+	text-align: right;
+}
+
+#primary-indicator {
+	<!--						top: 50%;-->
+	<!--						transform: translateY(100%);-->
+	<!--						left: 50%;-->
+	<!--						transform: translateX(-50%);-->
+	<!--						text-align: center;-->
+}
+
+#rest-indicator {
+	<!--						top: 100%; /* Move lower near the bottom of the gauge */-->
+	<!--						transform: translateY(100%);-->
+	<!--						left: 50%;-->
+	<!--						transform: translateX(-50%);-->
+	<!--						text-align: center;-->
+	<!--						height: 60px; /* Adjust height */-->
+}
+
+#secondary-indicator {
+	<!--						top: 50%;-->
+	<!--						transform: translateY(100%);-->
+	<!---->
+	<!--						left: 100%; /* Place it to the right of the gauge */-->
+	<!--						transform: translateX(10%);-->
+	<!--						text-align: left;-->
+	<!--						color: red;-->
+}
+
