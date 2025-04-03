@@ -174,7 +174,6 @@ function updateGaugeStyle(nettoPower, maxPower) {
 		currentAngle = maxScale;
 	}
 	
-	const gaugeCenter = `radial-gradient(var(--background) 0 var(--cutout), transparent var(--cutout) 100%)`;
 	const gaugeScale = `conic-gradient(from ${startOfScale}deg, 
 green ${minScale}deg ${nominalMin}deg, 
 yellow,
@@ -200,7 +199,7 @@ transparent ${maxScale}deg 360deg
 	}
 	
 	// Apply the gauge components as CSS background
-	gauge.style.background = `${scaleCover},${gaugeCenter},${gaugeScale}`;
+	gauge.style.background = `${scaleCover},${gaugeScale}`;
 }
 
 // Subroutines

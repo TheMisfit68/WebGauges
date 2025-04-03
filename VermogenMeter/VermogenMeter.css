@@ -1,7 +1,25 @@
+/* Use systems (Light/Dark Mode) */
+:root {
+	--lightDarkColor: rgb(255, 255, 255); /* White for light mode */
+	--size: 250px;   /* Gauge size */
+	--cutout: 75%;   /* Cutout size as percentage */
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--lightDarkColor: rgb(33, 33, 33); /* Dark Gray for dark mode */
+	}
+}
+
+/* Apply dark or light background */
+body {
+	background-color: var(--lightDarkColor);
+	transition: background-color 0.5s ease;
+}
+
+
 .gauge {
-	--size: 250px;
-	--cutout: 50%;
-	--background: white;
 	width: var(--size);
 	height: var(--size);
 	border-radius: 50%;
@@ -13,6 +31,17 @@
 	position: relative;
 	margin-top: 30px;
 	margin-left: 60px;
+}
+
+.gauge-center {
+	width: var(--cutout);
+	height: var(--cutout);
+	background-color: var(--lightDarkColor);
+	border-radius: 50%;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
 }
 
 .x-axis-line {
