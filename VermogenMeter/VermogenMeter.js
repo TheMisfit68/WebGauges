@@ -76,18 +76,16 @@ async function updateGaugeValues() {
 		// Update indicators that use calculated values
 		if (powerIndicator && nettoPower) {
 			connectValues(powerIndicator, null, nettoPower, null); // Custom label and units are present so no need to pass them
+			setDynamicIndicatorColor(powerIndicator, nettoPower, maxPower);
 		}
 		
 		// When everything is in place to update the gauge, do so
 		if (restIndicator && restPower) {
 			connectValues(restIndicator, null, restPower, null); // Custom label and units are present so no need to pass them
+			setDynamicIndicatorColor(restIndicator, nettoPower, maxPower);
 		}
 		
-		// Update gauge scale based on both indicatorValues
 		updateGaugeStyle(nettoPower, maxPower);
-		// Set dynamic color for the indicators
-		setDynamicIndicatorColor(powerIndicator, nettoPower, maxPower);
-		setDynamicIndicatorColor(restIndicator, nettoPower, maxPower);
 		
 	} catch (error) {
 		console.error("❌ Error in updateGaugeValues:", error);
@@ -165,13 +163,17 @@ function updateGaugeStyle(nettoPower, maxPower) {
 		currentAngle = maxScale;
 	}
 	
-	const gaugeScale = `conic-gradient(from ${startOfScale}deg, 
-green ${minScale}deg ${nominalMin}deg, 
-yellow,
-orange, 
-red ${nominalMax}deg ${maxScale}deg, 
-transparent ${maxScale}deg 360deg
+	const gaugeScale = `conic-gradient(
+  from ${startOfScale}deg,
+  var(--scaleColor-min-min) ${minScale}deg ${nominalMin}deg,        /* hard stop at beginning of nominal range */
+  var(--scaleColor-0-25) ${nominalMin}deg,
+  var(--scaleColor-25-50),
+  var(--scaleColor-50-75),
+  var(--scaleColor-75-100) ${nominalMax}deg,
+  var(--scaleColor-max-max) ${nominalMax}deg ${maxScale}deg,        /* hard stop at the end of nominal range */
+  transparent ${maxScale}deg 360deg
 )`;
+	
 	let scaleCover
 	if (nettoPower >= 0) {
 		scaleCover = `conic-gradient(from ${startOfScale}deg, 
@@ -254,18 +256,85 @@ function composeIndicatorData(endpointTag, endpointData) {
 }
 
 function setDynamicIndicatorColor(indicator, nettoPower, maxPower) {
+	
 	let dynamicColor = "gray";
 	
 	const ratio = nettoPower / maxPower;
-	if (ratio <= 0.25) {
-		dynamicColor = "green";
+	const rootStyle = getComputedStyle(document.documentElement);
+	
+	// Retrieve colors from CSS variables
+	const minMinColor = rootStyle.getPropertyValue('--scaleColor-min-min').trim();
+	const color0to25 = rootStyle.getPropertyValue('--scaleColor-0-25').trim();
+	const color25to50 = rootStyle.getPropertyValue('--scaleColor-25-50').trim();
+	const color50to75 = rootStyle.getPropertyValue('--scaleColor-50-75').trim();
+	const color75to100 = rootStyle.getPropertyValue('--scaleColor-75-100').trim();
+	const maxMaxColor = rootStyle.getPropertyValue('--scaleColor-max-max').trim();
+	
+	// Determine which color to use based on the ratio
+	if (ratio <= 0) {
+		dynamicColor = minMinColor;
+	} else if (ratio <= 0.25) {
+		dynamicColor = color0to25;
 	} else if (ratio <= 0.5) {
-		dynamicColor = "yellow";
+		dynamicColor = color25to50;
 	} else if (ratio <= 0.75) {
-		dynamicColor = "rgb(255, 147, 0)"; // Dark orange
-	} else {
-		dynamicColor = "red";
+		dynamicColor = color50to75;
+	} else if (ratio <= 1) {
+		dynamicColor = color75to100;
+	} else if (ratio > 1) {
+		dynamicColor = maxMaxColor;
 	}
 	
-	indicator.style.color = dynamicColor; // Apply color to the element
+	// Darken the color just before applying it to the element
+	dynamicDarkerColor = darkenColor(dynamicColor, 10); // Darken the color for better contrast
+	
+	// Apply the darkened color to the indicator text
+	indicator.style.color = dynamicDarkerColor;
+	
+	function darkenColor(color, percentage = 20) {
+		const factor = (100 - percentage) / 100; // Calculate the darkening factor
+		const [r, g, b] = getRGBFromColor(color);
+				
+		// Apply darkening factor (make sure it’s between 0 and 1)
+		const newR = Math.max(0, Math.min(255, r * factor));
+		const newG = Math.max(0, Math.min(255, g * factor));
+		const newB = Math.max(0, Math.min(255, b * factor));
+
+		const darkenedColor = `rgb(${Math.round(newR)}, ${Math.round(newG)}, ${Math.round(newB)})`;
+		return darkenedColor;
+	}
+	
+	function getRGBFromColor(color) {
+		
+		// Create a temporary div element
+		const tempElement = document.createElement("div");
+		
+		// Style it to avoid displaying it
+		tempElement.style.position = "absolute";
+		tempElement.style.visibility = "hidden";  // Make it invisible
+		tempElement.style.width = "0";  // No width or height
+		tempElement.style.height = "0";
+		
+		// Set the background color
+		tempElement.style.backgroundColor = color;
+		
+		// Append it to the DOM
+		document.body.appendChild(tempElement);
+		
+		// Get the computed color in RGB format
+		const computedColor = window.getComputedStyle(tempElement).backgroundColor;
+		
+		// Remove the temporary element from the DOM
+		document.body.removeChild(tempElement);
+		
+		// Extract RGB values from the computed color string (rgb(r, g, b))
+		const rgbValues = computedColor.match(/\d+/g);  // This matches all numbers in the string
+		const r = parseInt(rgbValues[0], 10);
+		const g = parseInt(rgbValues[1], 10);
+		const b = parseInt(rgbValues[2], 10);
+		
+		return [r, g, b];  // Return the RGB values as an array
+	}
+
 }
+

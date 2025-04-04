@@ -1,8 +1,17 @@
-/* Use systems (Light/Dark Mode) */
 :root {
-	--lightDarkColor: rgb(255, 255, 255); /* White for light mode */
-	--size: 250px;   /* Gauge size */
-	--cutout: 75%;   /* Cutout size as percentage */
+	/* Some global styling for the gauge */
+	--lightDarkColor: rgb(255, 255, 255); /* White for default light mode */
+	
+	--size: 250px;
+	--cutout: 75%;
+	
+	/* Gauge scale colors using consistent naming */
+	--scaleColor-min-min: mediumseagreen;
+	--scaleColor-0-25: lightskyblue;
+	--scaleColor-25-50: steelblue;
+	--scaleColor-50-75: goldenrod;
+	--scaleColor-75-100: darkorange;
+	--scaleColor-max-max: red;
 }
 
 /* Dark Mode */
