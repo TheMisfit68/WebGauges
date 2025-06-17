@@ -1,67 +1,101 @@
+//
+// AudioAlarm.js
+//
+// A blend of human creativity by TheMisfit68 and
+// AI assistance from ChatGPT.
+// Crafting the future, one line of JavaScript at a time.
+// Copyright © 2023 Jan Verrept. All rights reserved.
+//
+
 class AudioAlarm {
 
     constructor(audioContext = null) {
         this.audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
         this.oscillator = null;
         this.alarmState = "none"; // "none", "max", "maxmax"
-        this.pendingTimeouts = [];
+        this.isMuted = false;
     }
 
+    /// Mute current alarm until next state change
+    mute() {
+        this.isMuted = true;
+        this.stop();
+        console.info("🔇 AudioAlarm muted until next status change");
+    }
+
+    /// Public check method
     check(nettoPower, warningThreshold, peakThreshold, hysteresis = 200) {
         const previousState = this.alarmState;
 
-        // Check if we're above thresholds
         if (nettoPower >= peakThreshold) {
-            this.playSequence("maxmax");
+            this.setState("maxmax");
             console.warn("%c[DEBUG] ⚠️⚠️ Netto powerlevel exceeded MAXMAX threshold", "color: red;");
         } else if (nettoPower >= warningThreshold) {
-            this.playSequence("max");
+            this.setState("max");
             console.warn("%c[DEBUG] ⚠️ Netto powerlevel exceeded MAX threshold", "color: orange;");
         } else {
-            // Apply hysteresis before clearing alarm
+            // Apply hysteresis before clearing
             if ((this.alarmState === "maxmax" && nettoPower < (peakThreshold - hysteresis)) ||
                 (this.alarmState === "max" && nettoPower < (warningThreshold - hysteresis))) {
-                this.stop();
+                this.setState("none");
             }
-            // Confirm idle state witch each check
+
             if (this.alarmState === "none") {
-                console.debug("%c[DEBUG] ✅ Netto powerlevel normal", "color: green;");
+                console.debug("✅ Netto powerlevel normal (with hysteresis)");
             }
+        }
+
+        // Unmute automatically on state change
+        if (this.isMuted && this.alarmState !== previousState) {
+            this.isMuted = false;
+            console.info("🔔 AudioAlarm unmuted due to status change");
         }
     }
 
-    playSequence(level) {
-        if (this.alarmState !== level) {
-            this.stop();
-            this.alarmState = level;
+    setState(newState) {
+        if (this.alarmState === newState) return;
+
+        this.alarmState = newState;
+
+        if (this.isMuted) return;
+
+        switch (newState) {
+            case "max":
+                this.playSequence("max");
+                break;
+            case "maxmax":
+                this.playSequence("maxmax");
+                break;
+            case "none":
+                this.stop();
+                break;
         }
+    }
 
-        // Herhaal ook al zijn we in dezelfde state
-        const [frequency, count] = level === "max"
-            ? [800, 3]
-            : [1600, 5];
+    playSequence(type) {
+        this.stop();
 
-        const toneDuration = 200;
-        const pauseDuration = 100;
+        const frequency = type === "max" ? 800 : 1600;
+        const toneCount = type === "max" ? 3 : 5;
+        const duration = 150;
+        const pause = 100;
 
-        let timeOffset = 0;
+        let i = 0;
+        const playNext = () => {
+            if (i >= toneCount) return;
+            this.playTone(frequency, duration);
+            setTimeout(() => {
+                this.stop();
+                i++;
+                setTimeout(playNext, pause);
+            }, duration);
+        };
 
-        for (let i = 0; i < count; i++) {
-            this.pendingTimeouts.push(setTimeout(() => {
-                this.playTone(frequency, toneDuration);
-            }, timeOffset));
-            timeOffset += toneDuration + pauseDuration;
-        }
-
-        // Cleanup after sequence
-        this.pendingTimeouts.push(setTimeout(() => {
-            this.stop();
-            this.alarmState = level; // state blijft behouden zodat check weet dat we nog in alarm zitten
-        }, timeOffset));
+        playNext();
     }
 
     playTone(frequency, durationMs) {
-        this.stopTone(); // stop only active tone, not entire sequence
+        this.stop(); // stop current
 
         this.oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
@@ -74,21 +108,15 @@ class AudioAlarm {
         gainNode.gain.setValueAtTime(0.05, this.audioContext.currentTime); // softer tone
 
         this.oscillator.start();
-        setTimeout(() => this.stopTone(), durationMs);
+        this.alarmStopTimeout = setTimeout(() => this.stop(), durationMs);
     }
 
-    stopTone() {
+    stop() {
         if (this.oscillator) {
             this.oscillator.stop();
             this.oscillator.disconnect();
             this.oscillator = null;
         }
-    }
-
-    stop() {
-        this.stopTone();
-        this.pendingTimeouts.forEach(t => clearTimeout(t));
-        this.pendingTimeouts = [];
-        this.alarmState = "none";
+        clearTimeout(this.alarmStopTimeout);
     }
 }

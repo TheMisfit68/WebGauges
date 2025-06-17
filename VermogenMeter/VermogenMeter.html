@@ -12,32 +12,43 @@
 	<script src="VermogenMeter.js" defer></script>
 </head>
 <body>
-	<div class="gauge">
-		<div class="gauge-center"></div>
+	<div class="gauge-wrapper">
 
-		<div class="indicator" id="zero-indicator">
-			<div class="label"></div>
-			<span class="value">0</span><span class="unit" data-customUnit="kW">kW</span></div>
-		
-		<div class="x-axis-line"></div>
-		
-		<div class="indicator" id="primary-indicator">
-			<div class="label" data-customLabel="Netto Vermogen"></div>
+		<div class="gauge">
+			<div class="gauge-center"></div>
+	
+			<div class="indicator" id="zero-indicator">
+				<div class="label"></div>
+				<span class="value">0</span><span class="unit" data-customUnit="kW">kW</span></div>
 			
-			<div class="value-container"><span class="value">0.0</span> <span class="unit" data-customUnit="kW"></span></div>
+			<div class="x-axis-line"></div>
+			
+			<div class="indicator" id="primary-indicator">
+				<div class="label" data-customLabel="Netto Vermogen"></div>
+				
+				<div class="value-container"><span class="value">0.0</span> <span class="unit" data-customUnit="kW"></span></div>
+			</div>
+			
+			<div class="indicator" id="secondary-indicator">
+				<div class="label" data-customLabel="Maandpiek"></div>
+				
+				<div class="value-container"><span class="value">0.0</span><span class="unit"></span></div>
+			</div>
+			
+			<div class="indicator" id="rest-indicator">
+				<div class="label" data-customLabel="Resterend vermogen"></div>
+				
+				<div class="value-container"><span class="value">0.0</span><span class="unit" data-customUnit="kW"></span></div>
+			</div>
+			
 		</div>
 		
-		<div class="indicator" id="secondary-indicator">
-			<div class="label" data-customLabel="Maandpiek"></div>
-			
-			<div class="value-container"><span class="value">0.0</span><span class="unit"></span></div>
-		</div>
-		
-		<div class="indicator" id="rest-indicator">
-			<div class="label" data-customLabel="Resterend vermogen"></div>
-			
-			<div class="value-container"><span class="value">0.0</span><span class="unit" data-customUnit="kW"></span></div>
-		</div>
+		<!-- Mute alarm button -->
+		<div class="mute-container">
+			<button id="mute-button">🔇 Bevestig audio alarm</button>
+		</div>	
+	
 	</div>
+
 </body>
 </html>

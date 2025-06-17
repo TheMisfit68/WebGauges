@@ -124,4 +124,25 @@ body {
 
 
 
+.gauge-wrapper {
+    display: inline-block;
+    text-align: center;
+}
 
+.mute-container {
+    margin-top: 1rem;
+}
+
+#mute-button {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+#mute-button:hover {
+    background-color: #c0392b;
+}

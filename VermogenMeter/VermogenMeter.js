@@ -1,7 +1,7 @@
 let baseURL = "";
 let userName = "";
 let password = "";
-const audioAlarm = new AudioAlarm();
+window.audioAlarm = new AudioAlarm();
 
 window.onload = async function() {
 	await loadSettings();  // Wait for the settings to load first
@@ -89,7 +89,7 @@ async function updateGaugeValues() {
 		
 		updateGaugeStyle(nettoPower, maxPower);
 		
-		audioAlarm.check(maxPower, 3.500, maxPower); 
+		window.audioAlarm.check(nettoPower, 3.500, maxPower); 
 		
 	} catch (error) {
 		console.error("❌ Error in updateGaugeValues:", error);
