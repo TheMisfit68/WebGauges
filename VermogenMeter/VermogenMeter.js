@@ -89,7 +89,7 @@ async function updateGaugeValues() {
 		
 		updateGaugeStyle(nettoPower, maxPower);
 		
-		audioAlarm.check(nettoPower, maxPower); // Default values for the threshhold values set inside the class
+		audioAlarm.check(maxPower, 3.500, maxPower); 
 		
 	} catch (error) {
 		console.error("❌ Error in updateGaugeValues:", error);

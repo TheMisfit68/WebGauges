@@ -1,33 +1,67 @@
-//
-// AudioAlarm.js
-//
-// A blend of human creativity by TheMisfit68 and
-// AI assistance from ChatGPT.
-// Crafting the future, one line of JavaScript at a time.
-// Copyright © 2023 Jan Verrept. All rights reserved.
-//
-
 class AudioAlarm {
 
     constructor(audioContext = null) {
         this.audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
         this.oscillator = null;
         this.alarmState = "none"; // "none", "max", "maxmax"
+        this.pendingTimeouts = [];
     }
 
-    /// Check method with thresholds passed as arguments
-    check(currentPowerWatt, warningThreshold, peakThreshold) {
-        if (currentPowerWatt >= peakThreshold) {
-            if (this.alarmState !== "maxmax") this.playMAXMAX();
-        } else if (currentPowerWatt >= warningThreshold) {
-            if (this.alarmState !== "max") this.playMAX();
+    check(nettoPower, warningThreshold, peakThreshold, hysteresis = 200) {
+        const previousState = this.alarmState;
+
+        // Check if we're above thresholds
+        if (nettoPower >= peakThreshold) {
+            this.playSequence("maxmax");
+            console.warn("%c[DEBUG] ⚠️⚠️ Netto powerlevel exceeded MAXMAX threshold", "color: red;");
+        } else if (nettoPower >= warningThreshold) {
+            this.playSequence("max");
+            console.warn("%c[DEBUG] ⚠️ Netto powerlevel exceeded MAX threshold", "color: orange;");
         } else {
-            if (this.alarmState !== "none") this.stop();
+            // Apply hysteresis before clearing alarm
+            if ((this.alarmState === "maxmax" && nettoPower < (peakThreshold - hysteresis)) ||
+                (this.alarmState === "max" && nettoPower < (warningThreshold - hysteresis))) {
+                this.stop();
+            }
+            // Confirm idle state witch each check
+            if (this.alarmState === "none") {
+                console.debug("%c[DEBUG] ✅ Netto powerlevel normal", "color: green;");
+            }
         }
     }
 
+    playSequence(level) {
+        if (this.alarmState !== level) {
+            this.stop();
+            this.alarmState = level;
+        }
+
+        // Herhaal ook al zijn we in dezelfde state
+        const [frequency, count] = level === "max"
+            ? [800, 3]
+            : [1600, 5];
+
+        const toneDuration = 200;
+        const pauseDuration = 100;
+
+        let timeOffset = 0;
+
+        for (let i = 0; i < count; i++) {
+            this.pendingTimeouts.push(setTimeout(() => {
+                this.playTone(frequency, toneDuration);
+            }, timeOffset));
+            timeOffset += toneDuration + pauseDuration;
+        }
+
+        // Cleanup after sequence
+        this.pendingTimeouts.push(setTimeout(() => {
+            this.stop();
+            this.alarmState = level; // state blijft behouden zodat check weet dat we nog in alarm zitten
+        }, timeOffset));
+    }
+
     playTone(frequency, durationMs) {
-        this.stop(); // Stop any current tone
+        this.stopTone(); // stop only active tone, not entire sequence
 
         this.oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
@@ -40,26 +74,21 @@ class AudioAlarm {
         gainNode.gain.setValueAtTime(0.05, this.audioContext.currentTime); // softer tone
 
         this.oscillator.start();
-        this.alarmStopTimeout = setTimeout(() => this.stop(), durationMs);
+        setTimeout(() => this.stopTone(), durationMs);
     }
 
-    playMAX() {
-        this.alarmState = "max";
-        this.playTone(800, 200); // short beep
-    }
-
-    playMAXMAX() {
-        this.alarmState = "maxmax";
-        this.playTone(1600, 1000); // long tone
-    }
-
-    stop() {
+    stopTone() {
         if (this.oscillator) {
             this.oscillator.stop();
             this.oscillator.disconnect();
             this.oscillator = null;
         }
-        clearTimeout(this.alarmStopTimeout);
+    }
+
+    stop() {
+        this.stopTone();
+        this.pendingTimeouts.forEach(t => clearTimeout(t));
+        this.pendingTimeouts = [];
         this.alarmState = "none";
     }
 }
