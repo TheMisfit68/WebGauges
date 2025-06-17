@@ -1,6 +1,8 @@
 let baseURL = "";
 let userName = "";
 let password = "";
+const audioAlarm = new AudioAlarm();
+
 window.onload = async function() {
 	await loadSettings();  // Wait for the settings to load first
 	updateGaugeValues();         // Then call updateGaugeValues after settings are loaded
@@ -86,6 +88,8 @@ async function updateGaugeValues() {
 		}
 		
 		updateGaugeStyle(nettoPower, maxPower);
+		
+		audioAlarm.check(nettoPower, maxPower); // Default values for the threshhold values set inside the class
 		
 	} catch (error) {
 		console.error("❌ Error in updateGaugeValues:", error);
