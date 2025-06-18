@@ -1,12 +1,21 @@
 let baseURL = "";
 let userName = "";
 let password = "";
-window.audioAlarm = new AudioAlarm();
+window.alarmUnit = new AlarmUnit([
+  { name: "MAX", alarmSound: "maxSound" },
+  { name: "MAXMAX", alarmSound: "maxmaxSound" },
+]);
 
 window.onload = async function() {
 	await loadSettings();  // Wait for the settings to load first
 	updateGaugeValues();         // Then call updateGaugeValues after settings are loaded
 	setInterval(updateGaugeValues, 5000); // Set the interval to call every 5 seconds
+	
+	const acknowledgeButton = document.getElementById("acknowledge-button");
+	acknowledgeButton.addEventListener("click", () => {
+		window.alarmUnit.acknowledgeAll();
+		updateAcknowledgeButton();
+	});
 };
 
 const ENDPOINTS = {
@@ -59,6 +68,10 @@ async function updateGaugeValues() {
 					maxPower = indicatorData.value;
 					if (maxPower <= 2.5) {
 						maxPower = 2.5;
+						// When peakpower for the month is below 2.5 (its absolute minimum), keep it green instead of red.
+						maxPowerIndicator.style.color = "green"; 
+					} else {
+						maxPowerIndicator.style.color = "red";
 					}
 					restPower = maxPower-nettoPower;
 					if (restPower < 0) {
@@ -89,7 +102,30 @@ async function updateGaugeValues() {
 		
 		updateGaugeStyle(nettoPower, maxPower);
 		
-		window.audioAlarm.check(nettoPower, 3.500, maxPower); 
+		if (nettoPower !== null && maxPower !== null) {
+			
+			// Drempelwaarden
+			const alarmThresholdMax = 0.75 * maxPower;
+			const alarmThresholdMaxMax = maxPower;
+			
+			// Resetdrempels met hysteresis
+			const hysteresis = 0.200;
+			const resetThresholdMax = alarmThresholdMax - hysteresis;
+			const resetThresholdMaxMax = alarmThresholdMaxMax - hysteresis;
+			
+			window.alarmUnit.check(
+				"MAX",
+				(nettoPower >= alarmThresholdMax),
+				(nettoPower <= resetThresholdMax)
+			);
+			
+			window.alarmUnit.check(
+				"MAXMAX",
+				(nettoPower >= alarmThresholdMaxMax),
+				(nettoPower <= resetThresholdMaxMax)
+			);
+		}		
+		updateAcknowledgeButton();
 		
 	} catch (error) {
 		console.error("❌ Error in updateGaugeValues:", error);
@@ -298,12 +334,12 @@ function setDynamicIndicatorColor(indicator, nettoPower, maxPower) {
 	function darkenColor(color, percentage = 20) {
 		const factor = (100 - percentage) / 100; // Calculate the darkening factor
 		const [r, g, b] = getRGBFromColor(color);
-				
+		
 		// Apply darkening factor (make sure it’s between 0 and 1)
 		const newR = Math.max(0, Math.min(255, r * factor));
 		const newG = Math.max(0, Math.min(255, g * factor));
 		const newB = Math.max(0, Math.min(255, b * factor));
-
+		
 		const darkenedColor = `rgb(${Math.round(newR)}, ${Math.round(newG)}, ${Math.round(newB)})`;
 		return darkenedColor;
 	}
@@ -339,6 +375,30 @@ function setDynamicIndicatorColor(indicator, nettoPower, maxPower) {
 		
 		return [r, g, b];  // Return the RGB values as an array
 	}
-
+	
+	
+	
 }
 
+function updateAcknowledgeButton() {
+  const button = document.getElementById("acknowledge-button");
+
+  const activeAlarms = window.alarmUnit.channels.filter(ch => ch.triggered && !ch.acknowledged);
+  console.log("Active alarms:", activeAlarms.map(a => a.name + (a.acknowledged ? " (acknowledged)" : "")));
+  
+  if (activeAlarms.length > 0) {
+    // Alarm actief: knop altijd tonen
+    button.style.display = "inline-block"; // of gebruik classList zoals je wilt
+    button.classList.remove("orange", "red");
+
+    if (activeAlarms.some(ch => ch.name.toLowerCase() === "maxmax")) {
+      button.classList.add("red");
+    } else if (activeAlarms.some(ch => ch.name.toLowerCase() === "max")) {
+      button.classList.add("orange");
+    }
+  } else {
+    // Geen actieve alarms: knop verbergen
+    button.style.display = "none";
+    button.classList.remove("orange", "red");
+  }
+}

@@ -27,6 +27,10 @@ body {
 	transition: background-color 0.5s ease;
 }
 
+.gauge-wrapper {
+  width: var(--size); /* bijvoorbeeld 250px */
+  /* laat positionering default (links uitlijnen) */
+}
 
 .gauge {
 	width: var(--size);
@@ -56,8 +60,9 @@ body {
 .x-axis-line {
 	position: absolute;
 	top: 50%;
-	left: -25%;
-	width: 450px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 450px; /* totale zichtbare breedte inclusief uitstulping */
 	height: 2px;
 	background-color: grey;
 }
@@ -123,26 +128,36 @@ body {
 }
 
 
-
-.gauge-wrapper {
-    display: inline-block;
-    text-align: center;
+.acknowledge-container {
+  display: flex;
+  margin-left: 60px;
+  width: 250px;
+  justify-content: center; /* horizontaal centreren binnen gauge-wrapper */
+  margin-top: 1rem; /* ruimte boven knop */
 }
 
-.mute-container {
-    margin-top: 1rem;
+#acknowledge-button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: none; /* default hidden, wordt via JS getoond */
+  transition: background-color 0.3s ease;
+  margin-top: 1rem; /* afstand boven de knop */
+  user-select: none;
 }
 
-#mute-button {
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
-    background-color: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+#acknowledge-button.orange {
+  background-color: orange;
+  color: white;
 }
-#mute-button:hover {
-    background-color: #c0392b;
+
+#acknowledge-button.red {
+  background-color: red;
+  color: white;
+}
+
+#acknowledge-button:hover {
+  opacity: 0.85;
 }
