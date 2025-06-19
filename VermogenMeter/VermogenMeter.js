@@ -1,16 +1,24 @@
+// main.js
+//
+// A blend of human creativity by TheMisfit68 and
+// AI assistance from ChatGPT.
+// Crafting the future, one line of JS at a time.
+// Copyright © 2023 Jan Verrept. All rights reserved.
+
 let baseURL = "";
 let userName = "";
 let password = "";
+
 window.alarmUnit = new AlarmUnit([
-  { name: "MAX", alarmSound: "maxSound" },
-  { name: "MAXMAX", alarmSound: "maxmaxSound" },
+	{ name: "MAXMAX", alarmSound: "maxmaxSound", color: "red", priority: 1 },
+	{ name: "MAX",    alarmSound: "maxSound",    color: "orange", priority: 2 },
 ]);
 
-window.onload = async function() {
-	await loadSettings();  // Wait for the settings to load first
-	updateGaugeValues();         // Then call updateGaugeValues after settings are loaded
-	setInterval(updateGaugeValues, 5000); // Set the interval to call every 5 seconds
-	
+window.onload = async function () {
+	await loadSettings();
+	updateGaugeValues();
+	setInterval(updateGaugeValues, 5000);
+
 	const acknowledgeButton = document.getElementById("acknowledge-button");
 	acknowledgeButton.addEventListener("click", () => {
 		window.alarmUnit.acknowledgeAll();
@@ -32,225 +40,89 @@ let indicatorValues = [0];
 
 async function updateGaugeValues() {
 	try {
-		const data = await fetchValues(); // Get all the JSON data
-		
-		let indicatorToConnect;
-		let indicatorData;
-		let htmlLabel;
-		let htmlValue;
-		let htmlUnit;
-		
+		const data = await fetchValues();
+
 		let powerDelivered = null;
 		let powerReturned = null;
 		let nettoPower = null;
 		let maxPower = null;
 		let restPower = null;
-		
-		// Loop through the tagged data store the values
-		// if the tag matches some indicator, automatically attach the data to that indicator
+
 		Object.entries(data).forEach(([endpointTag, endpointData]) => {
-			
-			indicatorToConnect = document.getElementById(endpointTag);
-			indicatorData = composeIndicatorData(endpointTag, endpointData);
-			
+			const indicatorToConnect = document.getElementById(endpointTag);
+			const indicatorData = composeIndicatorData(endpointTag, endpointData);
+
 			switch (endpointTag) {
 				case "powerDelivered":
-					powerDelivered = composeIndicatorData("powerDelivered", endpointData).value;
+					powerDelivered = indicatorData.value;
 					break;
-					
 				case "powerReturned":
-					powerReturned = composeIndicatorData("powerReturned", endpointData).value;
+					powerReturned = indicatorData.value;
 					nettoPower = powerDelivered - powerReturned;
 					indicatorValues.push(nettoPower);
 					break;
-					
 				case "secondary-indicator":
 					maxPower = indicatorData.value;
 					if (maxPower <= 2.5) {
 						maxPower = 2.5;
-						// When peakpower for the month is below 2.5 (its absolute minimum), keep it green instead of red.
-						maxPowerIndicator.style.color = "green"; 
+						maxPowerIndicator.style.color = "green";
 					} else {
 						maxPowerIndicator.style.color = "red";
 					}
-					restPower = maxPower-nettoPower;
-					if (restPower < 0) {
-						restPower = 0;
-					}
+					restPower = Math.max(0, maxPower - nettoPower);
 					connectDataset(indicatorToConnect, indicatorData);
-					indicatorValues.push(maxPower);
-					indicatorValues.push(restPower);
+					indicatorValues.push(maxPower, restPower);
 					break;
-					
 				default:
 					console.warn("⚠️ No handler for endpoint: " + endpointTag);
-					break;
 			}
 		});
-		
-		// Update indicators that use calculated values
-		if (powerIndicator && nettoPower) {
-			connectValues(powerIndicator, null, nettoPower, null); // Custom label and units are present so no need to pass them
+
+		if (powerIndicator && nettoPower != null) {
+			connectValues(powerIndicator, null, nettoPower, null);
 			setDynamicIndicatorColor(powerIndicator, nettoPower, maxPower);
 		}
-		
-		// When everything is in place to update the gauge, do so
-		if (restIndicator && restPower) {
-			connectValues(restIndicator, null, restPower, null); // Custom label and units are present so no need to pass them
+
+		if (restIndicator && restPower != null) {
+			connectValues(restIndicator, null, restPower, null);
 			setDynamicIndicatorColor(restIndicator, nettoPower, maxPower);
 		}
-		
+
 		updateGaugeStyle(nettoPower, maxPower);
-		
+
 		if (nettoPower !== null && maxPower !== null) {
-			
-			// Drempelwaarden
 			const alarmThresholdMax = 0.75 * maxPower;
 			const alarmThresholdMaxMax = maxPower;
-			
-			// Resetdrempels met hysteresis
-			const hysteresis = 0.200;
-			const resetThresholdMax = alarmThresholdMax - hysteresis;
-			const resetThresholdMaxMax = alarmThresholdMaxMax - hysteresis;
-			
-			window.alarmUnit.check(
-				"MAX",
-				(nettoPower >= alarmThresholdMax),
-				(nettoPower <= resetThresholdMax)
-			);
-			
-			window.alarmUnit.check(
-				"MAXMAX",
-				(nettoPower >= alarmThresholdMaxMax),
-				(nettoPower <= resetThresholdMaxMax)
-			);
-		}		
+			const hysteresis = 0.2;
+			window.alarmUnit.check("MAX", nettoPower >= alarmThresholdMax, nettoPower <= alarmThresholdMax - hysteresis);
+			window.alarmUnit.check("MAXMAX", nettoPower >= alarmThresholdMaxMax, nettoPower <= alarmThresholdMaxMax - hysteresis);
+		}
+
 		updateAcknowledgeButton();
-		
+		window.alarmUnit.logStatus();
+
 	} catch (error) {
 		console.error("❌ Error in updateGaugeValues:", error);
 	}
 }
 
+// ─────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────
 
-function connectDataset(indicatorToConnect, indicatorData) {
-	connectValues(indicatorToConnect, indicatorData.quantity, indicatorData.value, indicatorData.unit);
-}
-
-function connectValues(indicatorToConnect, label, value, unit) {
-	
-	if (indicatorToConnect != null) {
-		
-		// Select child elements within this indicator
-		const htmlLabel = indicatorToConnect.querySelector(".label");
-		const htmlvalue = indicatorToConnect.querySelector(".value");
-		const htmlUnit = indicatorToConnect.querySelector(".unit");
-		
-		// Update text content of the HTML elements
-		// Check to see if a custom label is provided
-		const customLabel = htmlLabel.getAttribute("data-customLabel");
-		if (customLabel != null) {  // Fix: added parentheses around condition
-			htmlLabel.textContent = customLabel;
-		} else {
-			htmlLabel.textContent = label;
-		}
-		
-		// Format the value to 3 decimal places and use the correct decimal and thousands separators for the system
-		const formattedValue = new Intl.NumberFormat(undefined, {
-			minimumFractionDigits: 3,
-			maximumFractionDigits: 3,
-		}).format(value);
-		htmlvalue.textContent = formattedValue;
-		
-		// Check to see if a custom unit is provided
-		const customUnit = htmlUnit.getAttribute("data-customUnit");
-		if (customUnit != null) {
-			htmlUnit.textContent = customUnit;
-		} else {
-			htmlUnit.textContent = unit;
-		}
-	}else {
-		console.warn("⚠️ [connectValues] Indicator not found");
-	}
-}
-
-function updateGaugeStyle(nettoPower, maxPower) {
-	
-	// The angles used to define the gradient for the scale
-	// are based on a system where zero degrees is midscale or 12 o'clock
-	// Gradients that start with a 'from' parameter will start at the specified angle and
-	// gradientpoints are defined relative from that angle
-	const gauge = document.querySelector(".gauge");
-	
-	// Define abosolute angle that the scale will start at
-	const startOfScale = -135;
-	
-	// Define relative angles within that scale
-	const minScale = 0;
-	const nominalMin = 45;
-	const nominalMax = 225;
-	const maxScale = 270;
-	
-	// NettoPower expressed as an angle within the scale
-	const percentage = (nettoPower / maxPower);
-	const nominalRange = (nominalMax - nominalMin);
-	let currentAngle = nominalMin+(percentage * nominalRange);
-	// Always limit the angle within the defined ranges
-	if (currentAngle <= minScale) {
-		currentAngle = minScale;
-	}
-	if (currentAngle >= maxScale) {
-		currentAngle = maxScale;
-	}
-	
-	const gaugeScale = `conic-gradient(
-  from ${startOfScale}deg,
-  var(--scaleColor-min-min) ${minScale}deg ${nominalMin}deg,        /* hard stop at beginning of nominal range */
-  var(--scaleColor-0-25) ${nominalMin}deg,
-  var(--scaleColor-25-50),
-  var(--scaleColor-50-75),
-  var(--scaleColor-75-100) ${nominalMax}deg,
-  var(--scaleColor-max-max) ${nominalMax}deg ${maxScale}deg,        /* hard stop at the end of nominal range */
-  transparent ${maxScale}deg 360deg
-)`;
-	
-	let scaleCover
-	if (nettoPower >= 0) {
-		scaleCover = `conic-gradient(from ${startOfScale}deg, 
-rgba(255, 255, 255, 0.85) ${startOfScale}deg ${nominalMin}deg, 
-transparent ${nominalMin}deg ${currentAngle}deg,
-rgba(255, 255, 255, 0.85) ${currentAngle}deg  ${maxScale}deg,
-transparent ${maxScale}deg 360deg 
-)`;
-	} else {
-		scaleCover = `conic-gradient(from ${startOfScale}deg, 
-rgba(255, 255, 255, 0.85) ${startOfScale}deg  ${currentAngle}deg,
-transparent ${currentAngle}deg ${nominalMin}deg,
-rgba(255, 255, 255, 0.85) ${nominalMin}deg ${maxScale}deg,
-transparent ${maxScale}deg 360deg 
-)`;
-	}
-	
-	// Apply the gauge components as CSS background
-	gauge.style.background = `${scaleCover},${gaugeScale}`;
-}
-
-// Subroutines
 async function loadSettings() {
 	try {
-		const response = await fetch("/DSMRsettings.json");  // Fetch the config file from the ESP32
+		const response = await fetch("/DSMRsettings.json");
 		if (!response.ok) throw new Error("❌ Failed to load config");
-		
-		const settings = await response.json();  // Parse JSON
-		
+
+		const settings = await response.json();
 		const hostName = settings.Hostname;
 		baseURL = "http://" + hostName + ".local/api/v2/sm/fields/".toLowerCase();
 		const credentials = settings["basic-auth"];
 		userName = credentials.user;
 		password = credentials.pass;
-		
+
 		console.debug("[DEBUG] ⚙️✅ Settings loaded");
-		
 	} catch (error) {
 		console.error("❌ Error loading config:", error);
 	}
@@ -260,145 +132,119 @@ async function fetchValues() {
 	const headers = new Headers();
 	headers.set("Authorization", "Basic " + btoa(userName + ":" + password));
 	headers.set("Content-Type", "application/json");
-	
+
 	const requests = Object.entries(ENDPOINTS).map(async ([endpointTag, endpoint]) => {
-		const cleanbaseURL = baseURL.replace(/\/$/, ""); // Ensure baseURL does not end with '/'
-		const cleanEndpoint = endpoint.replace(/^\//, ""); // Ensure endpoint does not start with '/'
-		
-		const url = cleanbaseURL + "/" + cleanEndpoint;
+		const cleanURL = baseURL.replace(/\/$/, "") + "/" + endpoint.replace(/^\//, "");
 		try {
-			console.debug("%c[DEBUG] ⏬️ Fetching: " + url, "color: grey;");
-			const response = await fetch(url, { method: "GET", headers });
-			
-			if (!response.ok) {
-				throw new Error("❌ Error " + response.status + ": " + response.statusText);
-			}
+			const response = await fetch(cleanURL, { method: "GET", headers });
+			if (!response.ok) throw new Error("❌ Error " + response.status + ": " + response.statusText);
 			const jsonData = await response.json();
-			console.debug("[DEBUG] Received JSON data:", jsonData);
-			console.debug("[DEBUG] 🟢⇣ Response: ", jsonData);
-			return [endpointTag, jsonData]; // Return as a key-value pair
-			
+			return [endpointTag, jsonData];
 		} catch (error) {
 			console.error("❌ Fetch error for " + endpointTag + ":", error);
-			return [endpointTag, null]; // Keep consistent structure
+			return [endpointTag, null];
 		}
 	});
-	
-	// Await all requests and return as an object
+
 	return Object.fromEntries(await Promise.all(requests));
 }
 
 function composeIndicatorData(endpointTag, endpointData) {
-	const valuesKey = Object.keys(endpointData).find(key => key !== "timestamp"); // Find a key other than "timestamp"
-	const values = endpointData[valuesKey]; // Get the values associated with that key
-	const indicatorData = { quantity: endpointTag, ...values }; // Merge tag and values
-	return indicatorData;
+	const valuesKey = Object.keys(endpointData).find(key => key !== "timestamp");
+	const values = endpointData[valuesKey];
+	return { quantity: endpointTag, ...values };
+}
+
+function connectDataset(indicator, data) {
+	connectValues(indicator, data.quantity, data.value, data.unit);
+}
+
+function connectValues(indicator, label, value, unit) {
+	if (!indicator) return console.warn("⚠️ [connectValues] Indicator not found");
+
+	const htmlLabel = indicator.querySelector(".label");
+	const htmlValue = indicator.querySelector(".value");
+	const htmlUnit = indicator.querySelector(".unit");
+
+	htmlLabel.textContent = htmlLabel.getAttribute("data-customLabel") || label;
+	htmlValue.textContent = new Intl.NumberFormat(undefined, {
+		minimumFractionDigits: 3,
+		maximumFractionDigits: 3,
+	}).format(value);
+	htmlUnit.textContent = htmlUnit.getAttribute("data-customUnit") || unit;
+}
+
+function updateGaugeStyle(nettoPower, maxPower) {
+	const gauge = document.querySelector(".gauge");
+	const start = -135;
+	const min = 0, nominalMin = 45, nominalMax = 225, max = 270;
+	const percentage = nettoPower / maxPower;
+	let angle = nominalMin + percentage * (nominalMax - nominalMin);
+	angle = Math.max(min, Math.min(angle, max));
+
+	const scale = `conic-gradient(
+    from ${start}deg,
+    var(--scaleColor-min-min) ${min}deg ${nominalMin}deg,
+    var(--scaleColor-0-25) ${nominalMin}deg,
+    var(--scaleColor-25-50),
+    var(--scaleColor-50-75),
+    var(--scaleColor-75-100) ${nominalMax}deg,
+    var(--scaleColor-max-max) ${nominalMax}deg ${max}deg,
+    transparent ${max}deg 360deg
+  )`;
+
+	const cover = `conic-gradient(from ${start}deg, 
+    rgba(255,255,255,0.85) ${start}deg ${nominalMin}deg,
+    transparent ${nominalMin}deg ${angle}deg,
+    rgba(255,255,255,0.85) ${angle}deg ${max}deg,
+    transparent ${max}deg 360deg)`;
+
+	gauge.style.background = `${cover}, ${scale}`;
 }
 
 function setDynamicIndicatorColor(indicator, nettoPower, maxPower) {
-	
-	let dynamicColor = "gray";
-	
 	const ratio = nettoPower / maxPower;
-	const rootStyle = getComputedStyle(document.documentElement);
-	
-	// Retrieve colors from CSS variables
-	const minMinColor = rootStyle.getPropertyValue('--scaleColor-min-min').trim();
-	const color0to25 = rootStyle.getPropertyValue('--scaleColor-0-25').trim();
-	const color25to50 = rootStyle.getPropertyValue('--scaleColor-25-50').trim();
-	const color50to75 = rootStyle.getPropertyValue('--scaleColor-50-75').trim();
-	const color75to100 = rootStyle.getPropertyValue('--scaleColor-75-100').trim();
-	const maxMaxColor = rootStyle.getPropertyValue('--scaleColor-max-max').trim();
-	
-	// Determine which color to use based on the ratio
-	if (ratio <= 0) {
-		dynamicColor = minMinColor;
-	} else if (ratio <= 0.25) {
-		dynamicColor = color0to25;
-	} else if (ratio <= 0.5) {
-		dynamicColor = color25to50;
-	} else if (ratio <= 0.75) {
-		dynamicColor = color50to75;
-	} else if (ratio <= 1) {
-		dynamicColor = color75to100;
-	} else if (ratio > 1) {
-		dynamicColor = maxMaxColor;
-	}
-	
-	// Darken the color just before applying it to the element
-	dynamicDarkerColor = darkenColor(dynamicColor, 10); // Darken the color for better contrast
-	
-	// Apply the darkened color to the indicator text
-	indicator.style.color = dynamicDarkerColor;
-	
-	function darkenColor(color, percentage = 20) {
-		const factor = (100 - percentage) / 100; // Calculate the darkening factor
+	const root = getComputedStyle(document.documentElement);
+
+	const ranges = [
+		{ limit: 0.0, color: '--scaleColor-min-min' },
+		{ limit: 0.25, color: '--scaleColor-0-25' },
+		{ limit: 0.5, color: '--scaleColor-25-50' },
+		{ limit: 0.75, color: '--scaleColor-50-75' },
+		{ limit: 1.0, color: '--scaleColor-75-100' },
+		{ limit: Infinity, color: '--scaleColor-max-max' }
+	];
+
+	const match = ranges.find(r => ratio <= r.limit);
+	let dynamicColor = root.getPropertyValue(match.color).trim();
+	indicator.style.color = darkenColor(dynamicColor, 10);
+
+	function darkenColor(color, percent) {
 		const [r, g, b] = getRGBFromColor(color);
-		
-		// Apply darkening factor (make sure it’s between 0 and 1)
-		const newR = Math.max(0, Math.min(255, r * factor));
-		const newG = Math.max(0, Math.min(255, g * factor));
-		const newB = Math.max(0, Math.min(255, b * factor));
-		
-		const darkenedColor = `rgb(${Math.round(newR)}, ${Math.round(newG)}, ${Math.round(newB)})`;
-		return darkenedColor;
+		const f = (100 - percent) / 100;
+		return `rgb(${Math.round(r * f)}, ${Math.round(g * f)}, ${Math.round(b * f)})`;
 	}
-	
+
 	function getRGBFromColor(color) {
-		
-		// Create a temporary div element
-		const tempElement = document.createElement("div");
-		
-		// Style it to avoid displaying it
-		tempElement.style.position = "absolute";
-		tempElement.style.visibility = "hidden";  // Make it invisible
-		tempElement.style.width = "0";  // No width or height
-		tempElement.style.height = "0";
-		
-		// Set the background color
-		tempElement.style.backgroundColor = color;
-		
-		// Append it to the DOM
-		document.body.appendChild(tempElement);
-		
-		// Get the computed color in RGB format
-		const computedColor = window.getComputedStyle(tempElement).backgroundColor;
-		
-		// Remove the temporary element from the DOM
-		document.body.removeChild(tempElement);
-		
-		// Extract RGB values from the computed color string (rgb(r, g, b))
-		const rgbValues = computedColor.match(/\d+/g);  // This matches all numbers in the string
-		const r = parseInt(rgbValues[0], 10);
-		const g = parseInt(rgbValues[1], 10);
-		const b = parseInt(rgbValues[2], 10);
-		
-		return [r, g, b];  // Return the RGB values as an array
+		const temp = document.createElement("div");
+		temp.style.backgroundColor = color;
+		document.body.appendChild(temp);
+		const rgb = getComputedStyle(temp).backgroundColor.match(/\d+/g).map(Number);
+		document.body.removeChild(temp);
+		return rgb;
 	}
-	
-	
-	
 }
 
 function updateAcknowledgeButton() {
-  const button = document.getElementById("acknowledge-button");
+	const button = document.getElementById("acknowledge-button");
+	const topAlarm = window.alarmUnit.getHighestPriorityActiveAlarm();
 
-  const activeAlarms = window.alarmUnit.channels.filter(ch => ch.triggered && !ch.acknowledged);
-  console.log("Active alarms:", activeAlarms.map(a => a.name + (a.acknowledged ? " (acknowledged)" : "")));
-  
-  if (activeAlarms.length > 0) {
-    // Alarm actief: knop altijd tonen
-    button.style.display = "inline-block"; // of gebruik classList zoals je wilt
-    button.classList.remove("orange", "red");
-
-    if (activeAlarms.some(ch => ch.name.toLowerCase() === "maxmax")) {
-      button.classList.add("red");
-    } else if (activeAlarms.some(ch => ch.name.toLowerCase() === "max")) {
-      button.classList.add("orange");
-    }
-  } else {
-    // Geen actieve alarms: knop verbergen
-    button.style.display = "none";
-    button.classList.remove("orange", "red");
-  }
+	if (topAlarm) {
+		button.style.display = "inline-block";
+		button.className = ""; // reset alle klassen
+		button.classList.add(topAlarm.color);
+	} else {
+		button.style.display = "none";
+		button.className = "";
+	}
 }
